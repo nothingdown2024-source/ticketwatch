@@ -1,0 +1,401 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum SourceStatus {
+  ACTIVE
+  PAUSED
+  UNSUPPORTED
+  BLOCKED
+  RATE_LIMITED
+  ADAPTER_BROKEN
+  DISABLED
+}
+
+enum MonitorStatus {
+  ACTIVE
+  PAUSED
+  CLAIMED
+  DISABLED
+}
+
+enum ScanStatus {
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+enum ScanMode {
+  HTTP
+  BROWSER
+}
+
+enum ScanErrorCode {
+  DNS_ERROR
+  CONNECTION_TIMEOUT
+  HTTP_TIMEOUT
+  HTTP_4XX
+  HTTP_5XX
+  RATE_LIMITED
+  BLOCKED
+  CONTENT_TOO_LARGE
+  INVALID_CONTENT
+  PARSER_FAILED
+  BROWSER_FAILED
+  ADAPTER_FAILED
+  UNSUPPORTED_SOURCE
+  SECURITY_REJECTED
+}
+
+enum MatchMode {
+  EXACT
+  CONTAINS
+  ALIASES
+  FUZZY
+}
+
+enum WatchStatus {
+  PENDING
+  SEARCHING
+  AVAILABLE
+  NOTIFIED
+  PAUSED
+  ERROR
+  DISABLED
+}
+
+enum AvailabilityStatus {
+  UNKNOWN
+  NOT_AVAILABLE
+  AVAILABLE
+}
+
+enum AvailabilityEventType {
+  AVAILABILITY_OPENED
+  AVAILABILITY_CLOSED
+}
+
+enum NotificationStatus {
+  QUEUED
+  PROCESSING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  CANCELLED
+}
+
+enum NotificationChannel {
+  CONSOLE
+  WHATSAPP
+  EMAIL
+  TELEGRAM
+  PUSH
+}
+
+model User {
+  id                      String                   @id @default(uuid()) @db.Uuid
+  email                   String                   @unique @db.VarChar(320)
+  passwordHash            String                   @db.VarChar(255)
+  role                    UserRole                 @default(USER)
+  emailVerifiedAt         DateTime?                @db.Timestamptz(3)
+  createdAt               DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime                 @updatedAt @db.Timestamptz(3)
+  deletedAt               DateTime?                @db.Timestamptz(3)
+  profile                 UserProfile?
+  notificationPreferences NotificationPreference[]
+  sessions                AuthSession[]
+  watchRules              WatchRule[]
+  auditLogs               AuditLog[]
+}
+
+model UserProfile {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @unique @db.Uuid
+  displayName      String    @db.VarChar(120)
+  phoneE164        String?   @unique @db.VarChar(20)
+  phoneVerifiedAt  DateTime? @db.Timestamptz(3)
+  whatsappOptInAt  DateTime? @db.Timestamptz(3)
+  whatsappOptOutAt DateTime? @db.Timestamptz(3)
+  createdAt        DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @db.Timestamptz(3)
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuthSession {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @db.Uuid
+  tokenHash    String   @unique @db.Char(64)
+  expiresAt    DateTime @db.Timestamptz(3)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  revokedAt    DateTime? @db.Timestamptz(3)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model NotificationPreference {
+  id        String              @id @default(uuid()) @db.Uuid
+  userId    String              @db.Uuid
+  channel   NotificationChannel
+  enabled   Boolean             @default(false)
+  metadata  Json?
+  createdAt DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime            @updatedAt @db.Timestamptz(3)
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, channel])
+}
+
+model Source {
+  id             String              @id @default(uuid()) @db.Uuid
+  originalUrl    String              @db.Text
+  normalizedUrl  String              @db.Text
+  fingerprint    String              @unique @db.Char(64)
+  host           String              @db.VarChar(255)
+  adapterId      String              @db.VarChar(100)
+  displayName    String?             @db.VarChar(255)
+  status         SourceStatus        @default(ACTIVE)
+  createdAt      DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime            @updatedAt @db.Timestamptz(3)
+  adapterConfig  SourceAdapterConfig?
+  monitor        SourceMonitor?
+  scans          Scan[]
+  watchRules     WatchRule[]
+
+  @@index([host, status])
+  @@index([adapterId, status])
+}
+
+model SourceAdapterConfig {
+  id                     String   @id @default(uuid()) @db.Uuid
+  sourceId               String   @unique @db.Uuid
+  config                 Json
+  minimumIntervalSeconds Int      @default(180)
+  createdAt              DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime @updatedAt @db.Timestamptz(3)
+  source                 Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+}
+
+model SourceMonitor {
+  id              String        @id @default(uuid()) @db.Uuid
+  sourceId        String        @unique @db.Uuid
+  status          MonitorStatus @default(ACTIVE)
+  intervalSeconds Int           @default(180)
+  nextCheckAt     DateTime      @db.Timestamptz(3)
+  lastCheckAt     DateTime?     @db.Timestamptz(3)
+  lastSuccessAt   DateTime?     @db.Timestamptz(3)
+  claimedUntil    DateTime?     @db.Timestamptz(3)
+  claimedBy       String?       @db.VarChar(255)
+  consecutiveFailures Int       @default(0)
+  createdAt       DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime      @updatedAt @db.Timestamptz(3)
+  source          Source        @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextCheckAt])
+  @@index([claimedUntil])
+}
+
+model Scan {
+  id            String         @id @default(uuid()) @db.Uuid
+  sourceId      String         @db.Uuid
+  runKey        String         @unique @db.VarChar(255)
+  correlationId String         @db.Uuid
+  status        ScanStatus
+  mode          ScanMode
+  adapterId     String         @db.VarChar(100)
+  contentHash   String?        @db.Char(64)
+  errorCode     ScanErrorCode?
+  safeError     String?        @db.VarChar(500)
+  durationMs    Int?
+  startedAt     DateTime       @default(now()) @db.Timestamptz(3)
+  completedAt   DateTime?      @db.Timestamptz(3)
+  createdAt     DateTime       @default(now()) @db.Timestamptz(3)
+  source        Source         @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  snapshot      ScanSnapshot?
+  listings      ExtractedListing[]
+  events        AvailabilityEvent[]
+
+  @@index([sourceId, createdAt(sort: Desc)])
+  @@index([status, createdAt])
+}
+
+model ScanSnapshot {
+  id           String   @id @default(uuid()) @db.Uuid
+  scanId       String   @unique @db.Uuid
+  sourceTitle  String?  @db.VarChar(255)
+  listingCount Int
+  warnings     Json?
+  diagnostics  Json?
+  expiresAt    DateTime @db.Timestamptz(3)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  scan         Scan     @relation(fields: [scanId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+}
+
+model ExtractedListing {
+  id                 String             @id @default(uuid()) @db.Uuid
+  scanId             String             @db.Uuid
+  title              String             @db.VarChar(255)
+  normalizedTitle    String             @db.VarChar(255)
+  aliases            String[]
+  language           String?            @db.VarChar(80)
+  format             String?            @db.VarChar(40)
+  cinemaName         String?            @db.VarChar(255)
+  locationName       String?            @db.VarChar(255)
+  showDate           DateTime?          @db.Date
+  showTime           String?            @db.VarChar(20)
+  bookingStatus      AvailabilityStatus
+  bookingUrl         String?            @db.Text
+  sourceUrl          String             @db.Text
+  externalId         String?            @db.VarChar(255)
+  detectedAt         DateTime            @db.Timestamptz(3)
+  metadata           Json?
+  scan               Scan               @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  matchedEvents      AvailabilityEvent[]
+
+  @@index([scanId, normalizedTitle])
+  @@index([externalId])
+}
+
+model WatchRule {
+  id                String              @id @default(uuid()) @db.Uuid
+  userId            String              @db.Uuid
+  sourceId          String              @db.Uuid
+  query             String              @db.VarChar(255)
+  normalizedQuery   String              @db.VarChar(255)
+  matchMode         MatchMode
+  fuzzyThreshold    Float?
+  notificationChannel NotificationChannel @default(CONSOLE)
+  createdAt         DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime            @updatedAt @db.Timestamptz(3)
+  deletedAt         DateTime?           @db.Timestamptz(3)
+  user              User                @relation(fields: [userId], references: [id], onDelete: Restrict)
+  source            Source              @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  aliases           WatchAlias[]
+  state             WatchState?
+  availabilityEvents AvailabilityEvent[]
+
+  @@index([sourceId, deletedAt])
+  @@index([userId, deletedAt])
+}
+
+model WatchAlias {
+  id              String    @id @default(uuid()) @db.Uuid
+  watchRuleId     String    @db.Uuid
+  alias           String    @db.VarChar(255)
+  normalizedAlias String    @db.VarChar(255)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+  watchRule       WatchRule @relation(fields: [watchRuleId], references: [id], onDelete: Cascade)
+
+  @@unique([watchRuleId, normalizedAlias])
+}
+
+model WatchState {
+  id                 String             @id @default(uuid()) @db.Uuid
+  watchRuleId        String             @unique @db.Uuid
+  status             WatchStatus        @default(PENDING)
+  availability       AvailabilityStatus @default(UNKNOWN)
+  occurrence         Int                @default(0)
+  lastEvaluatedAt    DateTime?          @db.Timestamptz(3)
+  lastMatchedAt      DateTime?          @db.Timestamptz(3)
+  lastMatchedListing Json?
+  lastErrorCode      ScanErrorCode?
+  createdAt          DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime           @updatedAt @db.Timestamptz(3)
+  watchRule          WatchRule          @relation(fields: [watchRuleId], references: [id], onDelete: Cascade)
+}
+
+model AvailabilityEvent {
+  id               String                @id @default(uuid()) @db.Uuid
+  watchRuleId      String                @db.Uuid
+  scanId           String                @db.Uuid
+  matchedListingId String?               @db.Uuid
+  type             AvailabilityEventType
+  occurrence       Int
+  occurredAt       DateTime              @default(now()) @db.Timestamptz(3)
+  metadata         Json?
+  watchRule        WatchRule             @relation(fields: [watchRuleId], references: [id], onDelete: Restrict)
+  scan             Scan                  @relation(fields: [scanId], references: [id], onDelete: Restrict)
+  matchedListing   ExtractedListing?     @relation(fields: [matchedListingId], references: [id], onDelete: SetNull)
+  notifications    Notification[]
+
+  @@unique([watchRuleId, type, occurrence])
+  @@index([watchRuleId, occurredAt(sort: Desc)])
+}
+
+model Notification {
+  id                   String              @id @default(uuid()) @db.Uuid
+  availabilityEventId  String              @db.Uuid
+  channel              NotificationChannel
+  status               NotificationStatus  @default(QUEUED)
+  idempotencyKey       String              @unique @db.Char(64)
+  correlationId        String              @db.Uuid
+  provider             String?             @db.VarChar(100)
+  providerMessageId    String?             @db.VarChar(255)
+  attempts             Int                 @default(0)
+  lastError            String?             @db.VarChar(500)
+  queuedAt             DateTime            @default(now()) @db.Timestamptz(3)
+  sentAt               DateTime?           @db.Timestamptz(3)
+  createdAt            DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime            @updatedAt @db.Timestamptz(3)
+  availabilityEvent    AvailabilityEvent   @relation(fields: [availabilityEventId], references: [id], onDelete: Restrict)
+  deliveries           NotificationDelivery[]
+
+  @@index([status, createdAt])
+  @@index([provider, providerMessageId])
+}
+
+model NotificationDelivery {
+  id                String             @id @default(uuid()) @db.Uuid
+  notificationId    String             @db.Uuid
+  providerEventId   String             @unique @db.VarChar(255)
+  status            NotificationStatus
+  occurredAt        DateTime           @db.Timestamptz(3)
+  metadata          Json?
+  createdAt         DateTime           @default(now()) @db.Timestamptz(3)
+  notification      Notification       @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([notificationId, occurredAt])
+}
+
+model WebhookEvent {
+  id              String   @id @default(uuid()) @db.Uuid
+  provider        String   @db.VarChar(100)
+  providerEventId String   @db.VarChar(255)
+  signatureValid  Boolean
+  payload         Json
+  processedAt     DateTime? @db.Timestamptz(3)
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([provider, providerEventId])
+  @@index([processedAt, createdAt])
+}
+
+model AuditLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String?  @db.Uuid
+  action        String   @db.VarChar(120)
+  entityType    String   @db.VarChar(120)
+  entityId      String?  @db.VarChar(255)
+  correlationId String   @db.Uuid
+  ipHash        String?  @db.Char(64)
+  metadata      Json?
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+}
+

@@ -1,0 +1,45 @@
+{
+  "name": "@ticketwatch/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@nestjs/bullmq": "11.0.5",
+    "@nestjs/common": "11.2.5",
+    "@nestjs/core": "11.2.5",
+    "@nestjs/platform-express": "11.2.5",
+    "@nestjs/swagger": "11.2.3",
+    "@nestjs/throttler": "6.4.0",
+    "@ticketwatch/database": "workspace:*",
+    "@ticketwatch/notification-core": "workspace:*",
+    "@ticketwatch/scraper-core": "workspace:*",
+    "@ticketwatch/shared": "workspace:*",
+    "argon2": "0.44.0",
+    "bullmq": "5.66.4",
+    "class-transformer": "0.5.1",
+    "class-validator": "0.14.3",
+    "cookie-parser": "1.4.7",
+    "dotenv": "17.2.2",
+    "helmet": "8.1.0",
+    "ioredis": "5.8.2",
+    "pino": "10.3.1",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "1.4.10",
+    "@types/express": "5.0.6",
+    "@types/node": "24.10.1",
+    "supertest": "7.1.4",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3",
+    "vitest": "4.0.16"
+  }
+}

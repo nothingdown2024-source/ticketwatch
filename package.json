@@ -1,0 +1,38 @@
+{
+  "name": "ticketwatch",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "build": "pnpm db:generate && pnpm build:packages && pnpm --filter @ticketwatch/api --filter @ticketwatch/worker --filter @ticketwatch/web build",
+    "build:packages": "pnpm --filter @ticketwatch/shared build && pnpm --filter @ticketwatch/database --filter @ticketwatch/scraper-core --filter @ticketwatch/notification-core build",
+    "dev": "pnpm db:generate && pnpm build:packages && pnpm --parallel --filter @ticketwatch/web --filter @ticketwatch/api --filter @ticketwatch/worker dev",
+    "typecheck": "pnpm db:generate && pnpm build:packages && pnpm -r --if-present typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "pnpm db:generate && pnpm build:packages && pnpm -r --if-present test",
+    "test:unit": "pnpm --filter @ticketwatch/shared --filter @ticketwatch/scraper-core --filter @ticketwatch/notification-core test",
+    "test:integration": "pnpm --filter @ticketwatch/worker test:integration",
+    "test:e2e": "pnpm --filter @ticketwatch/web test:e2e",
+    "db:generate": "pnpm --filter @ticketwatch/database db:generate",
+    "db:migrate": "pnpm --filter @ticketwatch/database db:migrate",
+    "db:deploy": "pnpm --filter @ticketwatch/database db:deploy",
+    "db:seed": "pnpm --filter @ticketwatch/database db:seed",
+    "db:studio": "pnpm --filter @ticketwatch/database db:studio"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.2",
+    "@types/node": "24.10.1",
+    "eslint": "9.39.2",
+    "eslint-config-prettier": "10.1.8",
+    "globals": "16.5.0",
+    "prettier": "3.7.4",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.50.0",
+    "vitest": "4.0.16"
+  }
+}

@@ -1,0 +1,34 @@
+name: ticketwatch
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ticketwatch
+      POSTGRES_USER: ticketwatch
+      POSTGRES_PASSWORD: ticketwatch
+    ports:
+      - '5432:5432'
+    volumes:
+      - ticketwatch-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ticketwatch -d ticketwatch']
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  redis:
+    image: redis:8-alpine
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '6379:6379'
+    volumes:
+      - ticketwatch-redis:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  ticketwatch-postgres:
+  ticketwatch-redis:

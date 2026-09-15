@@ -1,0 +1,16 @@
+packages:
+  - apps/*
+  - packages/*
+
+allowBuilds:
+  '@prisma/engines': true
+  '@scarf/scarf': true
+  argon2: true
+  esbuild: true
+  msgpackr-extract: true
+  prisma: true
+
+minimumReleaseAgeExclude:
+  - '@nestjs/common@11.2.5'
+  - '@nestjs/core@11.2.5'
+  - '@nestjs/platform-express@11.2.5'
