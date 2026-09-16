@@ -3,7 +3,11 @@ import { fileURLToPath } from 'node:url';
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { createPrismaClient } from '@ticketwatch/database';
-import { ConsoleNotificationProvider, WhatsAppCloudProvider } from '@ticketwatch/notification-core';
+import {
+  ConsoleNotificationProvider,
+  type WhatsAppTemplateParameter,
+  WhatsAppCloudProvider,
+} from '@ticketwatch/notification-core';
 import { Redis } from 'ioredis';
 import { DispatcherProcessor } from './dispatcher.processor.js';
 import { DispatcherService } from './dispatcher.service.js';
@@ -47,7 +51,20 @@ function notificationProviderFactory(): ConsoleNotificationProvider | WhatsAppCl
     apiVersion: process.env.WHATSAPP_API_VERSION ?? 'v23.0',
     templateName: process.env.WHATSAPP_TEMPLATE_NAME ?? 'ticket_availability_alert',
     templateLanguage: process.env.WHATSAPP_TEMPLATE_LANGUAGE ?? 'en_US',
+    templateParameters: whatsappTemplateParameters(),
   });
+}
+
+function whatsappTemplateParameters(): WhatsAppTemplateParameter[] {
+  const allowed: WhatsAppTemplateParameter[] = ['movie', 'cinema', 'location', 'bookingUrl'];
+  const configured = (process.env.WHATSAPP_TEMPLATE_PARAMETERS ?? allowed.join(','))
+    .split(',')
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+  if (configured.length === 0 || configured.some((value) => !allowed.includes(value as WhatsAppTemplateParameter))) {
+    throw new Error('WHATSAPP_TEMPLATE_PARAMETERS must use movie, cinema, location, or bookingUrl.');
+  }
+  return configured as WhatsAppTemplateParameter[];
 }
 
 @Module({

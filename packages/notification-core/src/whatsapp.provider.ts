@@ -13,8 +13,18 @@ export interface WhatsAppProviderOptions {
   apiVersion: string;
   templateName: string;
   templateLanguage: string;
+  templateParameters?: WhatsAppTemplateParameter[];
   fetchImplementation?: typeof fetch;
 }
+
+export type WhatsAppTemplateParameter = 'movie' | 'cinema' | 'location' | 'bookingUrl';
+
+const defaultTemplateParameters: WhatsAppTemplateParameter[] = [
+  'movie',
+  'cinema',
+  'location',
+  'bookingUrl',
+];
 
 interface WhatsAppSendResponse {
   messages?: Array<{ id?: string }>;
@@ -49,12 +59,7 @@ export class WhatsAppCloudProvider implements NotificationProvider {
             components: [
               {
                 type: 'body',
-                parameters: [
-                  { type: 'text', text: message.movie },
-                  { type: 'text', text: message.cinema ?? 'Cinema' },
-                  { type: 'text', text: message.location ?? 'Location unavailable' },
-                  { type: 'text', text: message.bookingUrl },
-                ],
+                parameters: this.templateValues(message).map((text) => ({ type: 'text', text })),
               },
             ],
           },
@@ -81,6 +86,18 @@ export class WhatsAppCloudProvider implements NotificationProvider {
     const supplied = signature.slice('sha256='.length);
     if (expected.length !== supplied.length) return false;
     return timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(supplied, 'hex'));
+  }
+
+  private templateValues(message: AvailabilityAlertMessage): string[] {
+    const values: Record<WhatsAppTemplateParameter, string> = {
+      movie: message.movie,
+      cinema: message.cinema ?? 'Cinema',
+      location: message.location ?? 'Location unavailable',
+      bookingUrl: message.bookingUrl,
+    };
+    return (this.options.templateParameters ?? defaultTemplateParameters).map(
+      (parameter) => values[parameter],
+    );
   }
 
   public handleWebhook(payload: unknown): ProviderWebhookResult[] {

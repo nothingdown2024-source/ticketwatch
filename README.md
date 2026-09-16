@@ -72,8 +72,10 @@ defaults off. WhatsApp credentials are optional in development because the conso
 fully functional.
 
 For the official WhatsApp Cloud API, configure the token, phone-number ID, webhook verify token,
-approved template name, and template language. Provider acceptance means `SENT`; delivery/read
-states only come from signed webhook updates.
+approved template name, template language, and the exact ordered template variables. The default
+variable order is `movie,cinema,location,bookingUrl`. Your current `movie_ticket_alert` template
+uses two variables, so configure `WHATSAPP_TEMPLATE_PARAMETERS=movie,bookingUrl`. Provider
+acceptance means `SENT`; delivery/read states only come from signed webhook updates.
 
 ## Deployment
 

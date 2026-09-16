@@ -56,4 +56,39 @@ describe('WhatsAppCloudProvider', () => {
       }),
     ).toEqual([expect.objectContaining({ providerMessageId: 'wamid.1', status: 'DELIVERED' })]);
   });
+
+  it('uses the configured template variable order', async () => {
+    let requestBody: unknown;
+    const provider = new WhatsAppCloudProvider({
+      accessToken: 'test',
+      phoneNumberId: 'phone',
+      appSecret: 'secret',
+      apiVersion: 'v23.0',
+      templateName: 'movie_ticket_alert',
+      templateLanguage: 'en',
+      templateParameters: ['movie', 'bookingUrl'],
+      fetchImplementation: async (_input, init) => {
+        if (typeof init?.body !== 'string') throw new Error('Expected a JSON request body.');
+        requestBody = JSON.parse(init.body);
+        return new Response(JSON.stringify({ messages: [{ id: 'wamid.1' }] }), { status: 200 });
+      },
+    });
+
+    await provider.sendAvailabilityAlert(message);
+
+    expect(requestBody).toMatchObject({
+      template: {
+        name: 'movie_ticket_alert',
+        language: { code: 'en' },
+        components: [
+          {
+            parameters: [
+              { type: 'text', text: 'Avatar: Fire and Ash' },
+              { type: 'text', text: 'https://demo.ticketwatch.local/book/avatar' },
+            ],
+          },
+        ],
+      },
+    });
+  });
 });
