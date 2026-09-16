@@ -29,11 +29,15 @@ app.useGlobalPipes(
 );
 app.useGlobalFilters(new HttpErrorFilter());
 app.setGlobalPrefix('api/v1');
-const openApi = new DocumentBuilder()
-  .setTitle('TicketWatch API')
-  .setVersion('1.0')
-  .addCookieAuth('ticketwatch_session')
-  .build();
-SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, openApi));
+// API documentation is useful locally, but should not disclose the application
+// surface area on a public production host unless an administrator opts in.
+if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_API_DOCS === 'true') {
+  const openApi = new DocumentBuilder()
+    .setTitle('TicketWatch API')
+    .setVersion('1.0')
+    .addCookieAuth('ticketwatch_session')
+    .build();
+  SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, openApi));
+}
 app.enableShutdownHooks();
 await app.listen(Number(process.env.PORT ?? 4000), '0.0.0.0');

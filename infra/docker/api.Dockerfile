@@ -17,6 +17,7 @@ RUN pnpm db:generate && pnpm --filter @ticketwatch/shared build && pnpm --filter
 
 FROM node:24-alpine AS runtime
 ENV NODE_ENV=production
+RUN corepack enable
 WORKDIR /app
 COPY --from=build /app /app
 USER node
