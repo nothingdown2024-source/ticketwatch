@@ -48,7 +48,7 @@ function notificationProviderFactory(): ConsoleNotificationProvider | WhatsAppCl
     accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
     phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
     appSecret: process.env.WHATSAPP_APP_SECRET!,
-    apiVersion: process.env.WHATSAPP_API_VERSION ?? 'v23.0',
+    apiVersion: process.env.WHATSAPP_API_VERSION ?? 'v25.0',
     templateName: process.env.WHATSAPP_TEMPLATE_NAME ?? 'ticket_availability_alert',
     templateLanguage: process.env.WHATSAPP_TEMPLATE_LANGUAGE ?? 'en_US',
     templateParameters: whatsappTemplateParameters(),
